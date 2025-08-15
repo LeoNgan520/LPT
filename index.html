@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="zh-Hant">
+    
+<head>
+    <meta name="robots" content="noindex,nofollow" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MNHC Pricing Tool (Offline) v0.3.9d</title>
+  <style>
+    :root{ --bg:#f7f5ef; --panel:#ffffff; --edge:#e7e3d9; --text:#1a1f2a; --muted:#5f6b7a; --accent:#856a52; --accent-2:#b79273; --warn:#b45309; --ok:#166534; --red:#b91c1c; --mode-nong:#fde2e4; --mode-jiu:#e7f5e9; --mode-pei:#f2e8dc }
+    *,*:before,*:after{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Helvetica Neue", Arial}
+    .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+
+    .toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px}
+    .toolbar-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .toolbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .choose{padding:6px 8px;border:1px solid var(--edge);border-radius:10px;background:#fff}
+    .modeSelect{padding:6px 8px;border:1px solid var(--edge);border-radius:10px;min-width:150px}
+    .mode-nong{background:var(--mode-nong)!important}
+    .mode-jiu{background:var(--mode-jiu)!important}
+    .mode-pei{background:var(--mode-pei)!important}
+    #loadStatus{margin-left:6px;font-size:12px;color:#5f6b7a}
+
+    .disc{display:flex;gap:8px;align-items:center}
+    .disc .field{display:flex;align-items:center;gap:6px}
+    .disc label{font-size:12px;color:var(--muted);margin:0}
+    .disc input{width:78px;padding:6px 8px;border:1px solid var(--edge);border-radius:8px}
+
+    .card{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 3px 14px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+    .col{flex:1 1 320px;min-width:280px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,textarea,button{background:#fff;color:var(--text);border:1px solid var(--edge);border-radius:10px;padding:10px}
+    textarea{min-height:140px;width:100%}
+    .btn{cursor:pointer;background:var(--accent);border:1px solid var(--accent);color:#fff;padding:8px 12px;border-radius:10px}
+    .btn:hover{background:var(--accent-2);border-color:var(--accent-2)}
+    .btn.ghost{background:#fff;color:var(--accent);border-color:var(--accent)}
+    .btn.warn{background:#fff;color:var(--warn);border-color:var(--warn)}
+    .btn.ok{background:#fff;color:var(--ok);border-color:var(--ok)}
+    .xbtn{background:#fff;border:1px solid var(--red);color:#b91c1c;border-radius:8px;line-height:1;padding:2px 8px}
+
+    .grid{overflow:auto;border:1px solid var(--edge);border-radius:12px}
+    table{border-collapse:collapse;width:100%;min-width:900px;background:#fff}
+    th,td{border-bottom:1px solid var(--edge);padding:8px;vertical-align:middle}
+    th{position:sticky;top:0;background:#faf8f2;white-space:nowrap}
+    td{white-space:nowrap}
+    .right{text-align:right}
+    .muted{color:var(--muted)}
+    .banner{margin-top:8px;padding:8px 10px;border:1px dashed var(--warn);background:#fff5e8;border-radius:10px;color:#7c3e05}
+
+    /* 欄寬與對齊 */
+    th.c-del,  td.c-del  {width:40px;text-align:left}
+    th.c-code, td.c-code {width:110px;text-align:left}
+    th.c-name, td.c-name {
+      text-align:center;
+      width:auto; min-width:72px;
+      max-width:clamp(80px,14vw,120px);
+      text-overflow:ellipsis; overflow:hidden
+    }
+    th.c-qty,  td.c-qty  {width:70px;text-align:left}
+    th.c-free, td.c-free {width:40px;text-align:left}
+    th.c-unit, td.c-unit {width:86px;text-align:left}
+    th.c-sub,  td.c-sub  {width:110px;text-align:right}
+
+    /* 隱藏數量箭頭 */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+    input[type=number]{ -moz-appearance:textfield }
+
+    /* 可排序表頭 */
+    .sortable{cursor:pointer;user-select:none}
+    .sortable .arrow{font-size:10px;margin-left:4px;opacity:.6}
+
+    @media (max-width:600px){ th,td{padding:6px;font-size:13px} .col{min-width:240px} }
+
+    .hint{font-size:12px;color:var(--muted)}
+    .suggest{margin-top:8px;border:1px solid var(--edge);border-radius:10px;padding:8px;background:#fff}
+    .suggest h4{margin:0 0 6px;font-size:12px;color:#6b7280}
+    .suglist{display:grid;grid-template-columns:1fr;gap:4px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="disc" id="discounts"></div>
+      </div>
+      <div class="toolbar-right">
+        <input id="csvFile" class="choose" type="file" accept=".csv" title="載入本地 CSV" />
+        <span id="loadStatus" class="muted"></span>
+        <select id="mode" class="modeSelect mode-jiu" title="選擇模式">
+          <option value="nong">農本方（按樽）</option>
+          <option value="jiu" selected>灸出（按樽）</option>
+          <option value="pei">配藥中心（按克）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <label>3) 落單內容</label>
+          <textarea id="orderInput" placeholder="輸入 -> ENTER&#10;連接詞限這些：&quot;.&quot; &quot;x&quot; &quot; &quot;&#10;只接受：A C / AxC / A.C / B C / BxC / B.C / A B C / ABC / A / B"></textarea>
+          <div class="row" style="margin-top:8px;gap:8px;justify-content:space-between;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="btnParseAdd" class="btn ok">加到訂單</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="btnParseReplace" class="btn">取代訂單</button>
+              <button id="btnClearInput" class="btn ghost">清空</button>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div id="suggestBox" class="suggest" style="display:none">
+            <h4>未能解析的項目，可能是以下商品（僅供參考）：</h4>
+            <div id="suggestList" class="suglist"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <div class="row" style="gap:8px">
+          <button id="btnTranslate" class="btn ghost">譯單</button>
+          <button id="btnCopyQuote" class="btn ghost">報價</button>
+        </div>
+        <button id="btnClearAll" class="btn warn">清空全部</button>
+      </div>
+      <div id="nongBanner" class="banner" style="display:none">農本方提示：折實後未滿 800。</div>
+
+      <div class="grid" style="margin-top:8px">
+        <table id="resultTbl">
+          <thead>
+            <tr>
+              <th class="c-del" aria-label="刪除"></th>
+              <th id="thCode" class="c-code sortable">產品編號<span class="arrow" id="codeArrow">↕</span></th>
+              <th class="c-name">產品名稱</th>
+              <th class="c-qty">數量</th>
+              <th class="c-free" title="不計費">免</th>
+              <th id="thUnit" class="c-unit sortable">單價<span class="arrow" id="unitArrow">↕</span></th>
+              <th class="c-sub">小計</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr>
+              <th colspan="5" style="text-align:left">合計</th>
+              <th class="right" id="grandTotal" colspan="1">$0</th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="mini" id="orderBadge" style="margin-top:6px;color:#5f6b7a">
+        此訂單的折扣：— ｜ 單味 0 枝；複方 0 枝；總 0 枝
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== Utilities =====
+const $ = sel => document.querySelector(sel)
+const $$ = sel => Array.from(document.querySelectorAll(sel))
+const round0 = n => Math.round((+n||0))
+const fmt2 = n => (isNaN(n)? '-' : '$'+Number(n).toFixed(2))
+const fmt0 = n => (isNaN(n)? '-' : '$'+String(round0(n)))
+const toNumber = s => { if (s==null) return NaN; const t=String(s).replace(/[,\s]/g,''); return Number(t) }
+const normalizeFullHalf = s => String(s).replace(/（/g,'(').replace(/）/g,')').replace(/[０-９]/g, d=> String.fromCharCode(d.charCodeAt(0)-0xFEE0)).trim()
+const stripTailPunct = s => String(s).replace(/[。．\.、，,：:；;]+$/g,'')
+const normalizeCode = s => stripTailPunct(normalizeFullHalf(String(s))).replace(/[–—－﹣]/g,'-').trim()
+const stripTrailingZero = x => String(x).replace(/\.0$/,'')
+const normNameStrict = s => String(s).replace(/[\s·\.\-_/、，,；;:：\(\)\[\]{}「」『』“”"']/g,'')
+
+// CSV parse (simple)
+function parseCSV(text){
+  const rows=[]; let i=0, field='', row=[], inQ=false
+  while(i<text.length){
+    const c=text[i]
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++ } else { inQ=false } } else { field+=c } }
+    else{ if(c==='"'){ inQ=true } else if(c===','){ row.push(field); field='' } else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field='' } else if(c==='\r'){ } else { field+=c } }
+    i++
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row) }
+  return rows
+}
+
+// Header normalize
+const HEADER_MAP = new Map([
+  ['代碼','代碼'], ['產品編號','代碼'], ['編號','代碼'], ['code','代碼'], ['Code','代碼'],
+  ['品名','品名'], ['產品名稱','品名'], ['名稱','品名'], ['name','品名'], ['Name','品名'],
+  ['批發價','批發價'], ['參考零售價','參考零售價'], ['公價產品','公價產品'],
+  ['濃度(倍)','濃度(倍)'], ['濃度（倍）','濃度(倍)'], ['濃度','濃度(倍)'],
+  ['裝量','裝量'], ['裝量_g','裝量_g']
+])
+function normalizeHeaders(cols){
+  return cols.map(c=>{
+    const key = normalizeFullHalf(c)
+    if(HEADER_MAP.has(key)) return HEADER_MAP.get(key)
+    for(const [k,v] of HEADER_MAP.entries()){
+      if(k.toLowerCase()===key.toLowerCase()) return v
+    }
+    return key
+  })
+}
+function parseGrams(v){
+  if(v==null) return NaN
+  const s=String(v).trim().toLowerCase()
+  const m=s.match(/([\d.]+)\s*(g|克|kg|公斤)?/)
+  if(!m) return NaN
+  let val=parseFloat(m[1])
+  const unit=m[2]||''
+  if(unit==='kg' || unit==='公斤') val*=1000
+  return val
+}
+function classify(code){
+  const c=String(code||'').trim().toUpperCase()
+  if(/^2/.test(c)) return '複方'
+  if(/^FG-53(5[6-9]|6[0-5])$/.test(c)) return '複方'
+  if(c==='6001' || c==='6002') return '複方'
+  if(/^1/.test(c) || /^6/.test(c)){ if(c==='6005') return '單味'; return '單味' }
+  return '單味'
+}
+
+// ===== State =====
+let DB=[]
+let MODE='jiu' // 預設灸出
+let cartItems=[] // {rec, qty, noCharge}
+let sortState = { key:'unit', asc:true } // 'unit' or 'code'
+
+// ===== UI mode & discounts =====
+function setModeBg(){
+  const sel=$('#mode')
+  sel.classList.remove('mode-nong','mode-jiu','mode-pei')
+  if(MODE==='nong') sel.classList.add('mode-nong')
+  else if(MODE==='jiu') sel.classList.add('mode-jiu')
+  else sel.classList.add('mode-pei')
+}
+function renderDiscounts(){
+  const box=$('#discounts')
+  if(MODE==='nong'){
+    box.innerHTML = `
+      <div class="field"><label>單味</label><input id="dSingle" value="75" /></div>
+      <div class="field"><label>複方</label><input id="dCombo" value="75" /></div>`
+  }else if(MODE==='jiu'){
+    box.innerHTML = `
+      <div class="field"><label>≤2枝折扣</label><input id="jiuDiscFew" value="80" /></div>
+      <div class="field"><label>≥3枝折扣</label><input id="jiuDiscMany" value="66" /></div>`
+  }else{
+    box.innerHTML = `<div class="field"><label>配藥加成%</label><input id="markPei" value="110" /></div>`
+  }
+}
+function readPercentInput(id, def){ const el=$(id); if(!el) return def; const v = toNumber(el.value); return isNaN(v)? def : v }
+
+$('#mode').addEventListener('change',e=>{
+  MODE=e.target.value
+  setModeBg(); renderDiscounts(); bindDiscountInputs(); renderTable()
+})
+document.addEventListener('DOMContentLoaded', ()=>{
+  $('#mode').value='jiu'
+  setModeBg(); renderDiscounts(); bindDiscountInputs(); renderTable()
+})
+$('#btnClearInput')?.addEventListener('click',()=>{ $('#orderInput').value='' })
+
+// ===== Load CSV (mobile-friendly with FileReader fallback) =====
+async function readFileAsText(file){
+  if (file && typeof file.text === 'function') {
+    try { return await file.text() } catch(e){}
+  }
+  return await new Promise((resolve, reject)=>{
+    const fr = new FileReader()
+    fr.onload  = () => resolve(String(fr.result||''))
+    fr.onerror = () => reject(fr.error || new Error('read error'))
+    fr.readAsText(file, 'utf-8')
+  })
+}
+function updateLoadStatus(count, ok=true){
+  const el = $('#loadStatus'); if(!el) return
+  if(count==null){ el.textContent=''; return }
+  el.textContent = ok ? `已載入：${count} 筆` : `載入失敗`
+  el.style.color = ok ? '#5f6b7a' : '#b91c1c'
+}
+$('#csvFile').addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0]
+  if(!f){ updateLoadStatus(null); return }
+  try{
+    const text = await readFileAsText(f)
+    const rows = parseCSV(text)
+    if(!rows || rows.length===0){ updateLoadStatus(0,false); return }
+
+    let header = rows[0].map(normalizeFullHalf)
+    const generic = header.every(h=>/^Unnamed:|^$|^\d+$/.test(h))
+    if(generic && rows.length>1){
+      header = rows[1].map(normalizeFullHalf)
+      rows.splice(0,2)
+    }else{
+      rows.splice(0,1)
+    }
+
+    const normHeader = normalizeHeaders(header)
+    const idx = Object.fromEntries(normHeader.map((h,i)=>[h,i]))
+
+    DB = rows.map(r=>({
+      代碼: String(r[idx['代碼']] ?? '').trim(),
+      品名: String(r[idx['品名']] ?? '').trim(),
+      批發價: toNumber(r[idx['批發價']]),
+      參考零售價: toNumber(r[idx['參考零售價']]),
+      公價產品: String(r[idx['公價產品']] ?? '').trim().toLowerCase()==='true'
+            || String(r[idx['公價產品']] ?? '').trim()==='1'
+            || /是|yes/i.test(String(r[idx['公價產品']] ?? '')),
+      濃度倍: toNumber(r[idx['濃度(倍)']]) || 1,
+      裝量: normalizeFullHalf(r[idx['裝量']] ?? ''),
+      裝量_g: toNumber(r[idx['裝量_g']]) || parseGrams(r[idx['裝量']])
+    })).filter(x=>x.代碼 || x.品名)
+
+    updateLoadStatus(DB.length, true)
+    renderTable()
+  }catch(err){
+    console.error(err)
+    updateLoadStatus(0,false)
+    alert('讀取 CSV 失敗，請重試或更換瀏覽器')
+  }
+})
+
+// ===== Parser（嚴格規則 + A/B 預設 1） =====
+function findByCode(token){ const key = normalizeCode(token).toUpperCase(); return DB.find(r=> normalizeCode(r.代碼).toUpperCase() === key ) }
+function findByName(token){ const key = normNameStrict(token); return DB.find(r=> normNameStrict(r.品名) === key ) }
+function parseLineStrict(lineRaw){
+  const s0 = stripTailPunct(normalizeFullHalf(lineRaw)).trim()
+  if(!s0) return null
+  const tryPush = (rec, qty) => rec && !isNaN(qty) ? {rec, qty:Number(qty), noCharge:false} : null
+  let m
+  m = s0.match(/^(\S+)\s+(\d+(?:\.\d+)?)$/);   if(m){ const r=findByCode(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(\S+)\s*[xX]\s*(\d+(?:\.\d+)?)$/); if(m){ const r=findByCode(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(\S+)\s*\.\s*(\d+(?:\.\d+)?)$/);   if(m){ const r=findByCode(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);   if(m){ const r=findByName(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(.+?)\s*[xX]\s*(\d+(?:\.\d+)?)$/); if(m){ const r=findByName(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(.+?)\s*\.\s*(\d+(?:\.\d+)?)$/);   if(m){ const r=findByName(m[1]); if(r) return tryPush(r,m[2]) }
+  m = s0.match(/^(\S+)\s+(.+?)\s+(\d+(?:\.\d+)?)$/); if(m){ const r=findByCode(m[1]); if(r && normNameStrict(m[2])===normNameStrict(r.品名)) return tryPush(r,m[3]) }
+  m = s0.match(/^(.+?)(\d+(?:\.\d+)?)$/);
+  if(m){ let r=findByCode(m[1]); if(r) return tryPush(r,m[2]); r=findByName(m[1]); if(r) return tryPush(r,m[2]) }
+  let r=findByCode(s0); if(r) return tryPush(r,1)
+  r=findByName(s0); if(r) return tryPush(r,1)
+  return null
+}
+function parseOrderLines(text){
+  const lines = String(text||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)
+  const ok=[], bad=[], tokens=[]
+  for(const line of lines){
+    const item = parseLineStrict(line)
+    if(item){ ok.push(item) } else { bad.push(line); tokens.push({token: line}) }
+  }
+  return {ok, bad, tokens}
+}
+
+// ===== Suggestions =====
+function bigramSet(s){ const arr=[]; for(let i=0;i<s.length-1;i++) arr.push(s.slice(i,i+2)); return new Set(arr) }
+function dice(a,b){ if(a.length<2||b.length<2) return 0; const A=bigramSet(a), B=bigramSet(b); let inter=0; A.forEach(x=>{ if(B.has(x)) inter++ }); return (2*inter)/(A.size+B.size) }
+function suggestionsForToken(token){
+  const q=normNameStrict(token).toLowerCase()
+  const scored = DB.map(r=>{
+    const name=normNameStrict(String(r.品名||'')).toLowerCase()
+    const code=normalizeCode(String(r.代碼||'')).toLowerCase()
+    let s=0
+    if(name.includes(q)) s+=0.6
+    if(code.startsWith(q)) s+=0.4
+    s+= dice(name,q)*0.6
+    return {r, s}
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,5)
+  return scored.map(x=>`${normalizeCode(x.r.代碼)} ${x.r.品名}`)
+}
+function renderSuggestions(tokens){
+  const box=$('#suggestBox'), list=$('#suggestList')
+  if(!tokens || tokens.length===0){ box.style.display='none'; list.innerHTML=''; return }
+  list.innerHTML=''
+  tokens.forEach(({token})=>{
+    const sug = suggestionsForToken(token)
+    const div=document.createElement('div')
+    div.className='hint'
+    div.textContent = `「${token}」→ ${sug.length? sug.join('， ') : '（無建議）'}`
+    list.appendChild(div)
+  })
+  box.style.display='block'
+}
+
+// ===== Jiuchu eligible qty (exclude public-priced items) =====
+function jiuchuEligibleQty(){
+  return cartItems.reduce((s,it)=>{
+    if(it.rec && !it.rec.公價產品) s += (Number(it.qty)||0)
+    return s
+  }, 0)
+}
+
+// ===== Pricing =====
+function currentPercents(){
+  if(MODE==='nong'){
+    return { dSingle: readPercentInput('#dSingle', 75)/100, dCombo: readPercentInput('#dCombo', 75)/100 }
+  }
+  if(MODE==='jiu'){
+    const few = readPercentInput('#jiuDiscFew', 80)/100
+    const many = readPercentInput('#jiuDiscMany', 66)/100
+    return { jiuFew: few, jiuMany: many }
+  }
+  return { markPei: readPercentInput('#markPei', 110)/100 }
+}
+function priceItem(rec, qty, noCharge=false){
+  if(noCharge) return {unit:0, sub:0}
+  const type = classify(rec.代碼)
+  if(MODE==='nong'){
+    const {dSingle, dCombo} = currentPercents()
+    const d = (type==='單味')? dSingle : dCombo
+    if(rec.公價產品){
+      const unit = rec.參考零售價
+      return {unit, sub: unit*qty}
+    }
+    const unit = rec.批發價 * d
+    return {unit, sub: unit*qty}
+  }
+  if(MODE==='jiu'){
+    const {jiuFew, jiuMany} = currentPercents()
+    if(rec.公價產品){
+      const unit = round0(rec.參考零售價) // 不打折，仍以整數顯示
+      return {unit, sub: unit*qty, public:true}
+    }
+    const eligible = jiuchuEligibleQty()
+    const disc = (eligible<=2 ? jiuFew : jiuMany)
+    const unit = round0(rec.參考零售價 * disc) // 單價先四捨五入
+    return {unit, sub: unit*qty}
+  }
+  const {markPei} = currentPercents()
+  const grams = rec.裝量_g || parseGrams(rec.裝量)
+  const unitPerG = grams? (rec.批發價 * markPei / grams) : NaN
+  return {unit: unitPerG, sub: unitPerG*qty}
+}
+
+// ===== Cart helpers & badge =====
+function addItems(parsed){ cartItems = cartItems.concat(parsed.map(it => ({...it, noCharge: !!it.noCharge}))); onCartChanged() }
+function replaceItems(parsed){ cartItems = parsed.map(it => ({...it, noCharge: !!it.noCharge})); onCartChanged() }
+function removeIndex(idx){ cartItems.splice(idx,1); onCartChanged() }
+function clearAll(){ cartItems = []; onCartChanged() }
+
+function counts(){
+  let single=0, combo=0
+  cartItems.forEach(it=>{
+    const code=String(it.rec.代碼||'').toUpperCase()
+    const type=classify(code)
+    if(type==='複方'){
+      if(!code.startsWith('FG')) combo += (Number(it.qty)||0)
+    }else{ single += (Number(it.qty)||0) }
+  })
+  return {single, combo, total: single+combo}
+}
+function updateOrderBadge(){
+  let text='—'
+  if(MODE==='nong'){
+    const ds = readPercentInput('#dSingle',75)
+    const dc = readPercentInput('#dCombo',75)
+    const shownS = stripTrailingZero((ds/10).toFixed(1))
+    const shownC = stripTrailingZero((dc/10).toFixed(1))
+    text = `單味 ${shownS} 折；複方 ${shownC} 折`
+  }else if(MODE==='jiu'){
+    const fewPct = readPercentInput('#jiuDiscFew',80)
+    const manyPct = readPercentInput('#jiuDiscMany',66)
+    const shownFew = stripTrailingZero((fewPct/10).toFixed(1))
+    const shownMany = stripTrailingZero((manyPct/10).toFixed(1))
+    const elig = jiuchuEligibleQty()
+    text = `灸出折扣（僅計非公價商品門檻） ≤2枝：${shownFew} 折；≥3枝：${shownMany} 折 ｜ 當前計入枝數：${elig}`
+  }else{
+    const mp = readPercentInput('#markPei',110)
+    text = `配藥中心加成 ${mp}%`
+  }
+  const c = counts()
+  $('#orderBadge').textContent = `此訂單的折扣：${text} ｜ 單味 ${c.single} 枝；複方 ${c.combo} 枝；總 ${c.total} 枝`
+}
+
+// ===== Render table（支援「單價 / 產品編號」排序） =====
+function onCartChanged(){ renderTable() }
+function renderTable(){
+  const tb = $('#resultTbl tbody'); tb.innerHTML=''
+
+  const view = cartItems.map((it, i) => {
+    const p = priceItem(it.rec, it.qty, it.noCharge)
+    return {
+      __i:i,
+      unit: p.unit,
+      sub: p.sub,
+      codeKey: normalizeCode(it.rec.代碼).toUpperCase()
+    }
+  }).sort((a,b)=>{
+    const dir = sortState.asc ? 1 : -1
+    if(sortState.key==='unit'){
+      return dir * ((a.unit||0) - (b.unit||0))
+    }else{
+      if(a.codeKey < b.codeKey) return -1*dir
+      if(a.codeKey > b.codeKey) return  1*dir
+      return 0
+    }
+  })
+
+  let total=0
+  view.forEach(row=>{
+    const idx = row.__i
+    const it = cartItems[idx]
+    const {rec, qty, noCharge} = it
+    const unit = row.unit
+    const sub  = row.sub
+    total += (sub||0)
+
+    const showUnit = (MODE==='jiu'? fmt0(unit) : fmt2(unit))
+    const showSub  = (MODE==='jiu'? fmt0(sub)  : fmt2(sub))
+
+    const tr = document.createElement('tr')
+    tr.innerHTML = `
+      <td class="c-del"><button class="xbtn" title="刪除" data-idx="${idx}">×</button></td>
+      <td class="c-code">${normalizeCode(rec.代碼)||''}</td>
+      <td class="c-name" title="${rec.品名||''}">${rec.品名||''}</td>
+      <td class="c-qty">
+        <input class="qtyInput" data-idx="${idx}" type="number" min="0" step="1" value="${qty}" style="width:64px;text-align:left;padding:6px 8px;border:1px solid var(--edge);border-radius:8px">
+      </td>
+      <td class="c-free">
+        <input type="checkbox" class="freeChk" data-idx="${idx}" ${noCharge?'checked':''} title="不計費">
+      </td>
+      <td class="c-unit">${showUnit}</td>
+      <td class="c-sub right">${showSub}</td>`
+    tb.appendChild(tr)
+  })
+
+  $('#grandTotal').textContent = (MODE==='jiu'? fmt0(total) : fmt2(total))
+  $('#nongBanner').style.display = (MODE==='nong' && total<800 && cartItems.length>0)? 'block':'none'
+  updateOrderBadge()
+
+  // 行內事件
+  $$('#resultTbl .xbtn').forEach(btn=>btn.addEventListener('click',e=>{
+    const i=Number(e.target.getAttribute('data-idx')); removeIndex(i)
+  }))
+  $$('#resultTbl .qtyInput').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const i=Number(e.target.dataset.idx); const v=Number(e.target.value)
+      cartItems[i].qty = isNaN(v)||v<0? 0 : v; renderTable()
+    })
+  })
+  $$('#resultTbl .freeChk').forEach(ch=>{
+    ch.addEventListener('change', e=>{
+      const i=Number(e.target.dataset.idx)
+      cartItems[i].noCharge = e.target.checked
+      renderTable()
+    })
+  })
+}
+
+// ===== Copy helpers =====
+function currentPercents(){
+  if(MODE==='nong'){
+    return { dSingle: readPercentInput('#dSingle', 75)/100, dCombo: readPercentInput('#dCombo', 75)/100 }
+  }
+  if(MODE==='jiu'){
+    const few = readPercentInput('#jiuDiscFew', 80)/100
+    const many = readPercentInput('#jiuDiscMany', 66)/100
+    return { jiuFew: few, jiuMany: many }
+  }
+  return { markPei: readPercentInput('#markPei', 110)/100 }
+}
+function buildQuoteText(){
+  const lines=[]
+  if(MODE==='jiu'){
+    const {jiuFew, jiuMany} = currentPercents()
+    const elig = jiuchuEligibleQty()
+    const pct = (elig<=2? jiuFew: jiuMany)*100
+    const shown = stripTrailingZero((pct/10).toFixed(1))
+    lines.push(`報價為${shown}折（門檻僅計非公價商品，當前 ${elig} 枝）`)
+  }
+  cartItems.forEach(it=>{
+    const {rec, noCharge} = it
+    const {unit, sub} = priceItem(rec, it.qty, noCharge)
+    const showUnit = (MODE==='jiu'? fmt0(unit) : fmt2(unit))
+    const showSub  = (MODE==='jiu'? fmt0(sub)  : fmt2(sub))
+    const pub = rec.公價產品 ? '（公價）' : ''
+    lines.push(`${normalizeCode(rec.代碼)} ${rec.品名}${pub} ×${it.qty} ｜ 單價 ${showUnit} ｜ 小計 ${showSub}${noCharge?' ｜ 不計費':''}`)
+  })
+  lines.push(`合計：${$('#grandTotal').textContent}`)
+  if(MODE==='jiu'){
+    lines.push('')
+    lines.push('付款資訊：')
+    lines.push('轉數快：54097239')
+    lines.push('匯豐 HSBC：642-040976-838')
+    lines.push('戶口名稱：PAPL t／a Mnhc')
+  }
+  return lines.join('\n')
+}
+function buildTranslateText(){
+  const codes = cartItems.map(it=>String(normalizeCode(it.rec.代碼)||''))
+  const qtys  = cartItems.map(it=>String(it.qty))
+  return codes.join('\n') + '\n\n' + qtys.join('\n')
+}
+function copyText(txt){
+  return navigator.clipboard.writeText(txt).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  })
+}
+
+// ===== Wire buttons & keys =====
+function handleParse(add=false){
+  const {ok, bad, tokens} = parseOrderLines($('#orderInput').value)
+  if(add) addItems(ok); else replaceItems(ok)
+  $('#orderInput').value = bad.join('\n')
+  renderSuggestions(tokens)
+}
+$('#btnParseReplace').addEventListener('click', ()=>handleParse(false))
+$('#btnParseAdd').addEventListener('click', ()=>handleParse(true))
+$('#btnClearAll').addEventListener('click',()=>{ clearAll() })
+$('#btnCopyQuote').addEventListener('click',()=>{ copyText(buildQuoteText()).then(()=>alert('已複製。')) })
+$('#btnTranslate').addEventListener('click',()=>{ copyText(buildTranslateText()).then(()=>alert('已複製。')) })
+
+$('#orderInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleParse(true) }
+})
+
+// 折扣欄位即時生效
+function bindDiscountInputs(){ ['#dSingle','#dCombo','#jiuDiscFew','#jiuDiscMany','#markPei'].forEach(sel=>{
+  const el=$(sel); if(!el) return;
+  el.addEventListener('input', ()=>{ renderTable() });
+  el.addEventListener('change', ()=>{ renderTable() })
+}) }
+
+// 表頭排序事件
+$('#thUnit').addEventListener('click', ()=>{
+  sortState = { key:'unit', asc: (sortState.key==='unit' ? !sortState.asc : true) }
+  $('#unitArrow').textContent = sortState.key==='unit' ? (sortState.asc ? '↑' : '↓') : '↕'
+  $('#codeArrow').textContent = '↕'
+  renderTable()
+})
+$('#thCode').addEventListener('click', ()=>{
+  sortState = { key:'code', asc: (sortState.key==='code' ? !sortState.asc : true) }
+  $('#codeArrow').textContent = sortState.key==='code' ? (sortState.asc ? '↑' : '↓') : '↕'
+  $('#unitArrow').textContent = '↕'
+  renderTable()
+})
+</script>
+</body>
+</html>
